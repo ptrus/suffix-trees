@@ -1,9 +1,14 @@
 from collections import defaultdict
 
 
+'''
+TODO:
+    - find/contains methods
+    - check for any other basic
+    - GST
+'''
 class STrie():
-    def __init__(self, alphabet=''):
-        self.aphabet = alphabet
+    def __init__(self):
         self.root = SNode()
         self.root.depth = 0
         self.root.idx = 0
@@ -11,9 +16,10 @@ class STrie():
         self.root.add_suffix_link(self.root)
 
     def build(self, x):
-        self._build_naive(x)
+        self.word = x
+        self.__build_McCreight__(x)
 
-    def _build_naive(self, x):
+    def __build_naive__(self, x):
         self.__init__()
         u = self.root
         d = 0
@@ -24,12 +30,12 @@ class STrie():
                 while d < u.depth and x[u.idx + d] == x[i+d]:
                     d += 1
             if d < u.depth:
-                u = self._createNode(x,u, d)
-            self._createLeaf(x, i,u, d)
+                u = self.__createNode__(x,u, d)
+            self.__createLeaf__(x, i,u, d)
             u = self.root
             d = 0
 
-    def _build_McCreight(self, x):
+    def __build_McCreight__(self, x):
         self.__init__()
         u = self.root
         d = 0
@@ -40,16 +46,16 @@ class STrie():
                 while d < u.depth and x[u.idx + d] == x[i + d]:
                     d = d + 1
             if d < u.depth:
-                u = self._createNode(x, u, d)
-            self._createLeaf(x, i, u, d)
+                u = self.__createNode__(x, u, d)
+            self.__createLeaf__(x, i, u, d)
             if not u.get_suffix_link():
-                self._computeSlink(x, u)
+                self.__computeSlink__(x, u)
             u = u.get_suffix_link()
             d = d - 1
             if d < 0:
                 d = 0
 
-    def _createNode(self, x, u, d):
+    def __createNode__(self, x, u, d):
         i = u.idx
         p = u.parent
         v = SNode(idx=i, depth=d)
@@ -59,7 +65,7 @@ class STrie():
         v.parent = p
         return v
 
-    def _createLeaf(self, x, i, u, d):
+    def __createLeaf__(self, x, i, u, d):
         w = SNode()
         w.idx = i
         w.depth = len(x) - i
@@ -67,25 +73,75 @@ class STrie():
         w.parent = u
         return w
 
-    def _computeSlink(self, x, u):
+    def __computeSlink__(self, x, u):
         d = u.depth
         v = u.parent.get_suffix_link()
         while v.depth < d - 1:
             v = v.get_transition_link(x[u.idx + v.depth + 1])
         if v.depth > d - 1:
-            v = self._createNode(x, v, d-1)
+            v = self.__createNode__(x, v, d-1)
         u.add_suffix_link(v)
 
 
-    def _build_Ukkonen(self, x):
+    def __build_Ukkonen__(self, x):
         # TODO
         raise NotImplementedError()
 
     def build_generalized(self, xs):
-        terminal_gen = self._terminal()
+        terminal_gen = self.__terminalSymbols__()
+
         _xs = ''.join([x + next(terminal_gen) for x in xs])
+
+        self.__generalized_word_starts(xs)
+
         self.build(_xs)
-        #self.root._traverse(self._fix_generalized)
+        self.root.__traverse__(self.__label_generalized)
+
+    def __label_generalized(self, node):
+        if node.is_Leaf():
+            x = {self.__get_word_start_index(node.idx)}
+        else:
+            x = {n for ns in node.transition_links for n in ns[0].generalized_idxs}
+        node.generalized_idxs = x
+
+    def __get_word_start_index(self, idx):
+        i = 0
+        for _idx in self.word_starts[1:]:
+            if idx < _idx:
+                return i
+            else:
+                i+=1
+        return i
+        #raise Exception("Word start idx exceed max word start.")
+
+    def LCS(self, stringIdxs=-1):
+        if stringIdxs == -1 or not isinstance(stringIdxs, list):
+            stringIdxs = set(range(len(self.word_starts)))
+        else:
+            stringIdxs = set(stringIdxs)
+
+        deepestNode = self.__find_lcs__(self.root, stringIdxs)
+        start = deepestNode.idx
+        end = deepestNode.idx + deepestNode.depth
+        return self.word[start:end]
+
+    def __find_lcs__(self, node, stringIdxs):
+        nodes = [self.__find_lcs__(n, stringIdxs)
+            for (n,_) in node.transition_links
+            if n.generalized_idxs.issuperset(stringIdxs)]
+
+        if nodes == []:
+            return node
+
+        deepestNode = max(nodes, key=lambda n: n.depth)
+        return deepestNode
+
+    def __generalized_word_starts(self, xs):
+        self.word_starts = []
+        i = 0
+        for n in range(len(xs)):
+            self.word_starts.append(i)
+            i += len(xs[n]) + 1
 
     def contains(self, y):
         node = self.root
@@ -98,14 +154,23 @@ class STrie():
 
     def find(self, y):
         node = self.root
-        for i in range(len(y)):
-            currChar = y[i]
-            node = node.get_transition_link(currChar)
+        while True:
+            edge = self.__edgeLabel__(node, node.parent)
+            if edge.startswith(y):
+                return node.idx
+            i = 0
+            while(i < len(edge) and edge[i] == y[0]):
+                y = y[1:]
+                i += 1
+            node = node.get_transition_link(y[0])
             if not node:
                 return -1
-        return [node.idx,node.depth]
 
-    def _terminal(self):
+    def __edgeLabel__(self, node, parent):
+        return self.word[node.idx + parent.depth : node.idx + node.depth]
+
+
+    def __terminalSymbols__(self):
         # UTF PUA: U+E000..U+F8FF
         for i in range(0xE000,0xF8FF+1):
             yield(chr(i))
@@ -116,10 +181,10 @@ class SNode():
         self._suffix_link = None
         self.transition_links = []
         # Properties
-        self.substr = ""
         self.idx = idx
         self.depth = depth
         self.parent = parentNode
+        self.generalized_idxs = {}
 
     def __str__(self):
         return("SNode: idx:"+ str(self.idx) + " depth:"+str(self.depth) +
@@ -152,7 +217,10 @@ class SNode():
                 return True
         return False
 
-    def _traverse(self, f):
+    def is_Leaf(self):
+        return self.transition_links == []
+
+    def __traverse__(self, f):
         for (node,_) in self.transition_links:
-            self._traverse(node)
+            node.__traverse__(f)
         f(self)
