@@ -1,0 +1,2 @@
+from suffixtrees import STree
+
