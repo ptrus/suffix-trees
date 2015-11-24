@@ -34,6 +34,7 @@ class STree():
         type = self.__check_input__(x)
 
         if type == 'st':
+            x += next(self.__terminalSymbolsGenerator__())
             self.__build__(x)
         if type == 'gst':
             self.__build_generalized__(x)
@@ -208,6 +209,34 @@ class STree():
             node = node.get_transition_link(y[0])
             if not node:
                 return -1
+
+    def find_all(self, y):
+        idxs = []
+        y_input = y
+        node = self.root
+        while True:
+            edge = self.__edgeLabel__(node, node.parent)
+            if edge.startswith(y):
+                idxs.append(node.idx)
+                break
+            else:
+                i = 0
+                while(i < len(edge) and edge[i] == y[0]):
+                    y = y[1:]
+                    i += 1
+            node = node.get_transition_link(y[0])
+            if not node:
+                return idxs
+        leaves = self.__find_leaves__(node, [])
+        return [n.idx for n in leaves]
+
+    def __find_leaves__(self, node, leaves=[]):
+        if node.is_Leaf():
+            leaves.append(node)
+        else:
+            for (n,_) in node.transition_links:
+                leaves = leaves + self.__find_leaves__(n, [])
+        return leaves
 
     def __edgeLabel__(self, node, parent):
         """Helper method, returns the edge label between a node and it's parent"""
