@@ -55,8 +55,8 @@ class STree():
                 while d < u.depth and x[u.idx + d] == x[i+d]:
                     d += 1
             if d < u.depth:
-                u = self._createNode(x,u, d)
-            self._createLeaf(x, i,u, d)
+                u = self._create_node(x,u, d)
+            self._create_leaf(x, i,u, d)
             u = self.root
             d = 0
 
@@ -65,6 +65,8 @@ class STree():
 
         Algorithm based on:
         McCreight, Edward M. "A space-economical suffix tree construction algorithm." - ACM, 1976.
+        Implementation based on:
+        UH CS - 58093 String Processing Algorithms Lecture Notes
         """
         u = self.root
         d = 0
@@ -75,16 +77,16 @@ class STree():
                 while d < u.depth and x[u.idx + d] == x[i + d]:
                     d = d + 1
             if d < u.depth:
-                u = self._createNode(x, u, d)
-            self._createLeaf(x, i, u, d)
+                u = self._create_node(x, u, d)
+            self._create_leaf(x, i, u, d)
             if not u._get_suffix_link():
-                self._computeSlink(x, u)
+                self._compute_slink(x, u)
             u = u._get_suffix_link()
             d = d - 1
             if d < 0:
                 d = 0
 
-    def _createNode(self, x, u, d):
+    def _create_node(self, x, u, d):
         i = u.idx
         p = u.parent
         v = _SNode(idx=i, depth=d)
@@ -94,7 +96,7 @@ class STree():
         v.parent = p
         return v
 
-    def _createLeaf(self, x, i, u, d):
+    def _create_leaf(self, x, i, u, d):
         w = _SNode()
         w.idx = i
         w.depth = len(x) - i
@@ -102,13 +104,13 @@ class STree():
         w.parent = u
         return w
 
-    def _computeSlink(self, x, u):
+    def _compute_slink(self, x, u):
         d = u.depth
         v = u.parent._get_suffix_link()
         while v.depth < d - 1:
             v = v._get_transition_link(x[u.idx + v.depth + 1])
         if v.depth > d - 1:
-            v = self._createNode(x, v, d-1)
+            v = self._create_node(x, v, d-1)
         u._add_suffix_link(v)
 
 
@@ -153,7 +155,7 @@ class STree():
                 i+=1
         return i
 
-    def LCS(self, stringIdxs=-1):
+    def lcs(self, stringIdxs=-1):
         """Returns the Largest Common Substring of Strings provided in stringIdxs.
         If stringIdxs is not provided, the LCS of all strings is returned.
 
