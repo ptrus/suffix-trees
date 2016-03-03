@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(
-    name='suffix-trees',
-    packages=['suffix-trees'],
+    name='suffix_trees',
+    packages=['suffix_trees'],
     version='0.1.0',
     description='Suffix trees, generalized suffix trees and string processing methods',
     author='Peter Us',
