@@ -1,3 +1,5 @@
+import sys
+
 class STree():
     """Class representing the suffix tree."""
     def __init__(self, input=''):
@@ -240,8 +242,12 @@ class STree():
         Unicode Private Use Area U+E000..U+F8FF is used to ensure that terminal symbols
         are not part of the input string.
         """
+        py2 = sys.version[0] < '3'
         for i in range(0xE000,0xF8FF+1):
-            yield(chr(i))
+            if py2:
+                yield(unichr(i))
+            else:
+                yield(chr(i))
         raise ValueError("To many input strings.")
 
 
