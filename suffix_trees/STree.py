@@ -243,7 +243,8 @@ class STree():
         are not part of the input string.
         """
         py2 = sys.version[0] < '3'
-        for i in range(0xE000,0xF8FF+1):
+        UPPAs = list(range(0xE000,0xF8FF+1) + range(0xF0000,0xFFFFD+1) + range(0x100000, 0x10FFFD))
+        for i in UPPAs:
             if py2:
                 yield(unichr(i))
             else:
