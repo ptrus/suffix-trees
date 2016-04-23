@@ -1,9 +1,9 @@
 from setuptools import setup
 
 setup(
-    name='suffix_trees',
+    name='suffix-trees',
     packages=['suffix_trees'],
-    version='0.1.0',
+    version='0.2.2',
     description='Suffix trees, generalized suffix trees and string processing methods',
     author='Peter Us',
     author_email='ptrusr@gmail.com',
@@ -14,6 +14,7 @@ setup(
     license='MIT',
     classifiers=(
         "Development Status :: 3 - Alpha",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.0",
         "Programming Language :: Python :: 3.1",
