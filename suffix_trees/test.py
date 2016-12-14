@@ -1,4 +1,4 @@
-import STree
+from suffix_trees import STree
 import random, string
 
 import time
@@ -52,5 +52,5 @@ if __name__ == '__main__':
             find_times_native[n].append(find_time_sum / 100.0)
             #print(find_time_sum / 1000.0)
 
-        print("Foind2:", found2)
+        print("Found2:", found2)
         print(find_times_native[n])
