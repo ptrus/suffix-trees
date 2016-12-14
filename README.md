@@ -4,16 +4,16 @@ Python implementation of Suffix Trees and Generalized Suffix Trees. Provided als
 ### Usage
 
 ```python
-from STree import STree
+from suffix_trees import STree
 
 # Suffix-Tree example.
-st = STree("abcdefghab")
+st = STree.STree("abcdefghab")
 print(st.find("abc")) # 0
 print(st.find_all("ab")) # [0, 8]
 
 # Generalized Suffix-Tree example.
 a = ["xxxabcxxx", "adsaabc", "ytysabcrew", "qqqabcqw", "aaabc"]
-st = STree(a)
+st = STree.STree(a)
 print(st.lcs()) # "abc"
 ```
 
