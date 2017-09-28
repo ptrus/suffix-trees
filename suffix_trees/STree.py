@@ -199,7 +199,7 @@ class STree():
             
             if i != 0:
                 if i == len(edge) and y != '':
-                    continue
+                    pass
                 else:
                     return -1
             
@@ -222,7 +222,7 @@ class STree():
                 
                 if i != 0:
                     if i == len(edge) and y != '':
-                    continue
+                        pass
                 else:
                     return []
 

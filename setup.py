@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='suffix-trees',
     packages=['suffix_trees'],
-    version='0.2.3',
+    version='0.2.4',
     description='Suffix trees, generalized suffix trees and string processing methods',
     author='Peter Us',
     author_email='ptrusr@gmail.com',
