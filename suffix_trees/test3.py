@@ -32,5 +32,16 @@ class TestEncoding(unittest.TestCase):
         (string, substr) = data.draw(string_and_not_substring())
         assert STree.STree(string).find(substr) == -1
 
+    @given(data())
+    def test_find_all_substring_true(self, data):
+        (string, substr) = data.draw(string_and_substring())
+        assert len(STree.STree(string).find_all(substr)) > 0
+
+
+    @given(data())
+    def test_find_all_substring_false(self, data):
+        (string, substr) = data.draw(string_and_not_substring())
+        assert STree.STree(string).find_all(substr) == []
+
 if __name__ == '__main__':
     unittest.main()

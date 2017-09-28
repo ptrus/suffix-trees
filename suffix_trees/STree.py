@@ -192,15 +192,12 @@ class STree():
             if edge.startswith(y):
                 return node.idx
             
-            # TODO: Ugly fix for now, not sure what is even needed.
-            inthere = False
             i = 0
             while(i < len(edge) and edge[i] == y[0]):
-                inthere = True
                 y = y[1:]
                 i += 1
             
-            if inthere:
+            if i != 0:
                 if i == len(edge) and y != '':
                     continue
                 else:
@@ -222,6 +219,13 @@ class STree():
                 while(i < len(edge) and edge[i] == y[0]):
                     y = y[1:]
                     i += 1
+                
+                if i != 0:
+                    if i == len(edge) and y != '':
+                    continue
+                else:
+                    return []
+
             node = node._get_transition_link(y[0])
             if not node:
                 return []
