@@ -214,21 +214,22 @@ class STree():
             edge = self._edgeLabel(node, node.parent)
             if edge.startswith(y):
                 break
-            else:
-                i = 0
-                while(i < len(edge) and edge[i] == y[0]):
-                    y = y[1:]
-                    i += 1
-                
-                if i != 0:
-                    if i == len(edge) and y != '':
-                        pass
+
+            i = 0
+            while(i < len(edge) and edge[i] == y[0]):
+                y = y[1:]
+                i += 1
+            
+            if i != 0:
+                if i == len(edge) and y != '':
+                    pass
                 else:
                     return []
 
             node = node._get_transition_link(y[0])
             if not node:
                 return []
+
         leaves = node._get_leaves()
         return [n.idx for n in leaves]
 

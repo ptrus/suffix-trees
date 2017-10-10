@@ -13,3 +13,8 @@ if __name__ == '__main__':
     text = "name language w en url http w namelanguage en url http"
     stree = STree.STree(text)
     print(stree.find('law'))
+    
+    st = STree.STree("abcdefghab")
+    print(st.find("abc")) # 0
+    print(st.find_all("ab")) # [0, 8] ---> [] :-(
+

@@ -58,3 +58,6 @@ target/
 
 # PyCharm
 .idea/
+
+# Hypothesis files
+.hypothesis
