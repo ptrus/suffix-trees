@@ -1,17 +1,14 @@
 from setuptools import setup
 
-import pypandoc
-long_description = pypandoc.convert('README.md', 'rst')
-
 setup(
     name='suffix-trees',
     packages=['suffix_trees'],
-    version='0.2.4.2',
+    version='0.2.4.4',
     description='Suffix trees, generalized suffix trees and string processing methods',
     author='Peter Us',
     author_email='ptrusr@gmail.com',
     url='https://github.com/ptrus/suffix-trees',
-    long_description=long_description,
+    long_description=open('README.rst').read(),
     package_data={},
     include_package_data=True,
     license='MIT',
