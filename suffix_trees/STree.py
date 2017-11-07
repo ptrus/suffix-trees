@@ -140,7 +140,7 @@ class STree():
         if node.is_leaf():
             x = {self._get_word_start_index(node.idx)}
         else:
-            x = {n for ns in node.transition_links for n in ns[0].generalized_idxs}
+            x = {n_ for n in node.transition_links.values() for n_ in n.generalized_idxs}
         node.generalized_idxs = x
 
     @property
@@ -208,7 +208,7 @@ class STree():
     def _find_lcs(self, node, stringIdxs):
         """Helper method that finds LCS by traversing the labeled GSD."""
         nodes = [self._find_lcs(n, stringIdxs)
-            for (n,_) in node.transition_links
+            for n in node.transition_links.values()
             if n.generalized_idxs.issuperset(stringIdxs)]
 
         if nodes == []:
@@ -457,7 +457,7 @@ class _SNode:
     def __init__(self, idx=-1, parentNode=None, depth=-1):
         # Links
         self._suffix_link = None
-        self.transition_links = []
+        self.transition_links = dict()
         # Properties
         self.idx = idx
         self.depth = depth
@@ -472,34 +472,30 @@ class _SNode:
         self._suffix_link = snode
 
     def _get_suffix_link(self):
-        if self._suffix_link != None:
+        if self._suffix_link is not None:
             return self._suffix_link
         else:
             return False
 
     def _get_transition_link(self, suffix):
-        for node,_suffix in self.transition_links:
-            if _suffix == '__@__' or suffix == _suffix:
-                return node
-        return False
+        if self._has_transition(suffix):
+            return self.transition_links[suffix]
+        else:
+            return False
 
     def _add_transition_link(self, snode, suffix=''):
-        tl = self._get_transition_link(suffix)
-        if tl: # TODO: imporve this.
-            self.transition_links.remove((tl,suffix))
-        self.transition_links.append((snode,suffix))
+        if self._has_transition(suffix):
+            del self.transition_links[suffix]
+        self.transition_links[suffix] = snode
 
     def _has_transition(self, suffix):
-        for node,_suffix in self.transition_links:
-            if _suffix == '__@__' or suffix == _suffix:
-                return True
-        return False
+        return suffix in self.transition_links
 
     def is_leaf(self):
-        return self.transition_links == []
+        return self.transition_links == dict()
 
     def traverse(self, f):
-        for (node,_) in self.transition_links:
+        for node in self.transition_links.values():
             node.traverse(f)
         f(self)
 
@@ -510,7 +506,7 @@ class _SNode:
 
         :param f: function to be called at every node
         """
-        for (node,_) in sorted(self.transition_links, key=lambda t: t[1]):
+        for (_, node) in sorted(self.transition_links.items(), key=lambda t: t[0]):
             node.lexicographical_traverse(f)
         f(self)
 
@@ -518,5 +514,5 @@ class _SNode:
         if self.is_leaf():
             return [self]
         else:
-            return [x for (n,_) in self.transition_links for x in n._get_leaves()]
+            return [x for n in self.transition_links.values() for x in n._get_leaves()]
 
