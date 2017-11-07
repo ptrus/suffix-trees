@@ -1,6 +1,12 @@
 import sys, math
 from os.path import commonprefix
-from itertools import izip
+from builtins import str as utext
+try:
+    # Python 2
+    from itertools import izip
+except ImportError:
+    # Python 3
+    izip = zip
 
 
 class STree():
@@ -29,11 +35,11 @@ class STree():
 
         In case of an invalid input throws ValueError.
         """
-        if isinstance(input_string, str) or isinstance(input_string, unicode):
+        if isinstance(input_string, str) or isinstance(input_string, utext):
             return 'st'
         elif isinstance(input_string, list):
             if all(isinstance(i, str) for i in input_string) or \
-                    all(isinstance(i, unicode) for i in input_string):
+                    all(isinstance(i, utext) for i in input_string):
                 return 'gst'
 
         raise ValueError("String argument should be of type String or"
@@ -333,7 +339,7 @@ class STree():
         """
         assert hasattr(self, 'word_starts')
         if i < 2:
-            print "i has to be >= 2"
+            print("i has to be >= 2")
             return
 
         if self._fcs_l is None:

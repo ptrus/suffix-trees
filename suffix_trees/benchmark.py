@@ -137,12 +137,12 @@ import STree
 
 for p in range(6):
     N = 10**p
-    print '\nN = {}'.format(N)
+    print('\nN = {}'.format(N))
     my_seq = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(N)).split(',')[0]
 
     with benchmark('BWT Wikipedia Entropy'):
-        print bwt_entropy(my_seq)
+        print(bwt_entropy(my_seq))
 
     with benchmark('BWT ST Entropy'):
-        print STree.STree(my_seq).bwt_entropy
+        print(STree.STree(my_seq).bwt_entropy)
 
