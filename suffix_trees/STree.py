@@ -1,27 +1,39 @@
-import sys
+import sys, math
+from os.path import commonprefix
+from itertools import izip
 
 
 class STree():
     """Class representing the suffix tree."""
-    def __init__(self, input=''):
+    def __init__(self, input_string=None):
         self.root = _SNode()
         self.root.depth = 0
         self.root.idx = 0
         self.root.parent = self.root
         self.root._add_suffix_link(self.root)
+        self._bwt = None
+        self._bwt_entropy = None
+        self._suffix_array = None
+        self._lcp_array = None
+        self._lrs = None
+        self._fcs_l = None
+        self._V = None
+        self._Vs = None
 
-        if not input == '':
-           self.build(input)
+        if input_string is not None:
+            self.build(input_string)
 
-    def _check_input(self, input):
+    @staticmethod
+    def _check_input(input_string):
         """Checks the validity of the input.
 
         In case of an invalid input throws ValueError.
         """
-        if isinstance(input, str):
+        if isinstance(input_string, str) or isinstance(input_string, unicode):
             return 'st'
-        elif isinstance(input, list):
-            if all(isinstance(item, str) for item in input):
+        elif isinstance(input_string, list):
+            if all(isinstance(i, str) for i in input_string) or \
+                    all(isinstance(i, unicode) for i in input_string):
                 return 'gst'
 
         raise ValueError("String argument should be of type String or"
@@ -115,11 +127,11 @@ class STree():
         """
         terminal_gen = self._terminalSymbolsGenerator()
 
-        _xs = ''.join([x + next(terminal_gen) for x in xs])
+        _xs = u''.join([x + next(terminal_gen) for x in xs])
         self.word = _xs
         self._generalized_word_starts(xs)
         self._build(_xs)
-        self.root._traverse(self._label_generalized)
+        self.root.traverse(self._label_generalized)
 
     def _label_generalized(self, node):
         """Helper method that labels the nodes of GST with indexes of strings
@@ -131,6 +143,22 @@ class STree():
             x = {n for ns in node.transition_links for n in ns[0].generalized_idxs}
         node.generalized_idxs = x
 
+    @property
+    def suffix_array(self):
+        """
+        Computes the equivalent suffix array.
+
+        :return:
+        """
+        if self._suffix_array is None:
+            self._suffix_array = []
+            self.root.lexicographical_traverse(self._get_suffix_array)
+        return self._suffix_array
+
+    def _get_suffix_array(self, node):
+        if node.is_leaf():
+            self.suffix_array.append(node.idx)
+
     def _get_word_start_index(self, idx):
         """Helper method that returns the index of the string based on node's
         starting index"""
@@ -141,6 +169,25 @@ class STree():
             else:
                 i+=1
         return i
+
+    @property
+    def bwt(self):
+        """
+        Burrows-Wheeler Transform.
+        Please refer to:
+        Burrows, M., & Wheeler, D. (1994). A block-sorting lossless data compression algorithm.
+        Algorithm, Data Compression, (124), 18. https://doi.org/10.1.1.37.6774
+        :return:
+        """
+        # TODO: implement bwt_inverse()
+        if self._bwt is None:
+            self._bwt = []
+            self.root.lexicographical_traverse(self._get_bwt)
+        return self._bwt
+
+    def _get_bwt(self, node):
+        if node.is_leaf():
+            self._bwt.append(self.word[node.idx - 1])
 
     def lcs(self, stringIdxs=-1):
         """Returns the Largest Common Substring of Strings provided in stringIdxs.
@@ -208,7 +255,6 @@ class STree():
                 return -1
 
     def find_all(self, y):
-        y_input = y
         node = self.root
         while True:
             edge = self._edgeLabel(node, node.parent)
@@ -233,10 +279,105 @@ class STree():
         leaves = node._get_leaves()
         return [n.idx for n in leaves]
 
+    @property
+    def lrs(self):
+        """
+        Finds the longest repeated string, pretty similar to lcs().
+
+        :return: longest repeated string
+        """
+        if self._lrs is None:
+            deepest_leaf = self._find_lrs()
+            self._lrs = self._edgeLabel(deepest_leaf.parent, self.root)
+        return self._lrs
+
+    def _find_lrs(self):
+        leaf_nodes = self.root._get_leaves()
+        deepest_leaf = max(leaf_nodes, key=lambda l: l.depth)
+        return deepest_leaf
+
+    @property
+    def lcp_array(self):
+        """
+        Longest Common Prefix array (LCP).
+
+        :return:
+        """
+        if self._lcp_array is None:
+            self._lcp_array = self._get_lcp_array()
+        return self._lcp_array
+
+    def _get_lcp_array(self):
+        return [len(commonprefix([self.word[i:],
+                                  self.word[j:]])) for (i, j) in izip(self.suffix_array,
+                                                                      self.suffix_array[1:])]
+
+    def lps(self):
+        """
+        Find the longest palindrome sequence.
+        Examples:
+            banana -> anana
+            pqrqpabcdfgdcba -> pqrqp
+
+        :return:
+        """
+        # TODO
+        raise NotImplementedError()
+
+    def get_fcs_l(self, i):
+        """
+        Frequent Common String: For a set of string S = {S1,S2,...,Sk}, define l(i) for each
+        i=2,3,...,k as the length of a maximal substring that is common to at least i strings of S.
+
+        :return:
+        """
+        assert hasattr(self, 'word_starts')
+        if i < 2:
+            print "i has to be >= 2"
+            return
+
+        if self._fcs_l is None:
+            self._V = [0] * (len(self.word_starts) + 1)
+            self._Vs = [''] * (len(self.word_starts) + 1)
+            self._compute_fcs()
+        return self._fcs_l[i], self._Vs[i]
+
+    def _compute_fcs(self):
+        """ Where we actually compute fcs V and l vectors.
+        """
+        self.root.traverse(self._compute_V)
+        self._fcs_l = [0] * (len(self.word_starts) + 1)
+        self._fcs_l[-1] = self._V[-1]
+        for i in range(2,len(self._fcs_l)-1)[::-1]:
+            if self._fcs_l[i+1] > self._V[i]:
+                self._Vs[i] = self._Vs[i+1][:]
+            self._fcs_l[i] = max(self._fcs_l[i+1], self._V[i])
+
+    def _compute_V(self, node):
+        """
+        """
+        if not node.is_leaf():
+            i = len(node.generalized_idxs)
+            if node.depth == self._V[i]:
+                self._Vs[i].append(self.word[node.idx:node.idx + node.depth])
+            elif node.depth > self._V[i]:
+                self._V[i] = node.depth
+                self._Vs[i] = [self.word[node.idx:node.idx + node.depth]]
+
+    @property
+    def bwt_entropy(self):
+        """Apply BWT then calculate the entropy for the input sequence. Ref:
+        Cai, H., et al. (2004). Universal entropy estimation via block sorting.
+        IEEE Transactions on Information Theory. Springer-Verlag Univ. Illinois Press.
+        https://doi.org/10.1109/TIT.2004.830771
+        """
+        if self._bwt_entropy is None:
+            self._bwt_entropy = _Entropy(self.bwt).bwt_entropy
+        return self._bwt_entropy
+
     def _edgeLabel(self, node, parent):
         """Helper method, returns the edge label between a node and it's parent"""
         return self.word[node.idx + parent.depth : node.idx + node.depth]
-
 
     def _terminalSymbolsGenerator(self):
         """Generator of unique terminal symbols used for building the Generalized Suffix Tree.
@@ -253,7 +394,65 @@ class STree():
         raise ValueError("To many input strings.")
 
 
-class _SNode():
+class _Entropy:
+    """Class to compute different values of entropy from a suffix tree."""
+    def __init__(self, z):
+        """Calculate the BWT entropy for the input sequence z
+
+        [1] Cai, H., et al. (2004). Universal entropy estimation via block sorting.
+        IEEE Transactions on Information Theory. Springer-Verlag Univ. Illinois Press.
+        https://doi.org/10.1109/TIT.2004.830771
+        """
+        self.bwt_entropy = _Entropy._bwt_entropy(z)
+
+    @staticmethod
+    def chunk_string(input_string, length):
+        """ Code taken from SO:
+        https://stackoverflow.com/questions/18854620
+        """
+        return (input_string[0 + i:length + i] for i in range(0, len(input_string), length))
+
+    @staticmethod
+    def _q_caret(a, j):
+        """ From [1]:
+        q(a,j) = N_j(a) / sum_{b in alphabet} N_j(b)
+
+        That's basically the probability of 'a' in segment 'j'
+        """
+        return j.count(a) / float(len(j))
+
+    @staticmethod
+    def _log_q_caret(j):
+        """ From [1]:
+        log2 q(j) = sum_{a in alphabet} N_j(a) log2 q(a,j)
+
+        That's the sum of occurences of every 'a' in 'j' times
+        the probability of that 'a' appearing in every segment.
+        We can simplify a bit: we can skip iterations when a given 'a'
+        from the alphabet is not in 'j'
+        """
+        return math.fsum(j.count(a) * math.log(_Entropy._q_caret(a, j), 2.) for a in set(j))
+
+    @staticmethod
+    def _bwt_entropy(z):
+        """
+        Calculates the bwt_entropy [1] for an input sequence z. Note that z
+        has to be a bwt from an input string (already implemented in the suffix tree class).
+        :param z: input string, result of a BWT
+        :return: value of the calculated bwt_entropy
+        """
+        # Calculate the size of the segments with which we'll split the sequence z [w(n)]
+        # According to [1], the best (for a simple implementation) is sqrt(n), where n
+        # is the length of z.
+        w = int(round(math.sqrt(len(z))))
+
+        # Perform the entropy calculation
+        h_z = -1. / len(z) * math.fsum(_Entropy._log_q_caret(j) for j in _Entropy.chunk_string(z, w))
+
+        return h_z
+
+
+class _SNode:
     """Class representing a Node in the Suffix tree."""
     def __init__(self, idx=-1, parentNode=None, depth=-1):
         # Links
@@ -299,9 +498,20 @@ class _SNode():
     def is_leaf(self):
         return self.transition_links == []
 
-    def _traverse(self, f):
+    def traverse(self, f):
         for (node,_) in self.transition_links:
-            node._traverse(f)
+            node.traverse(f)
+        f(self)
+
+    def lexicographical_traverse(self, f):
+        """
+        Same as _traverse() but lexicographically ordered. This is useful for
+        building suffix arrays and Burrows-Wheeler Transform (BWT).
+
+        :param f: function to be called at every node
+        """
+        for (node,_) in sorted(self.transition_links, key=lambda t: t[1]):
+            node.lexicographical_traverse(f)
         f(self)
 
     def _get_leaves(self):
@@ -309,3 +519,4 @@ class _SNode():
             return [self]
         else:
             return [x for (n,_) in self.transition_links for x in n._get_leaves()]
+
