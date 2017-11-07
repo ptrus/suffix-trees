@@ -9,7 +9,7 @@ except ImportError:
     izip = zip
 
 
-class STree():
+class STree:
     """Class representing the suffix tree."""
     def __init__(self, input_string=None):
         self.root = _SNode()
@@ -82,16 +82,17 @@ class STree():
                 while d < u.depth and x[u.idx + d] == x[i + d]:
                     d = d + 1
             if d < u.depth:
-                u = self._create_node(x, u, d)
-            self._create_leaf(x, i, u, d)
+                u = STree._create_node(x, u, d)
+            STree._create_leaf(x, i, u, d)
             if not u._get_suffix_link():
-                self._compute_slink(x, u)
+                STree._compute_slink(x, u)
             u = u._get_suffix_link()
             d = d - 1
             if d < 0:
                 d = 0
 
-    def _create_node(self, x, u, d):
+    @staticmethod
+    def _create_node(x, u, d):
         i = u.idx
         p = u.parent
         v = _SNode(idx=i, depth=d)
@@ -101,7 +102,8 @@ class STree():
         v.parent = p
         return v
 
-    def _create_leaf(self, x, i, u, d):
+    @staticmethod
+    def _create_leaf(x, i, u, d):
         w = _SNode()
         w.idx = i
         w.depth = len(x) - i
@@ -109,13 +111,14 @@ class STree():
         w.parent = u
         return w
 
-    def _compute_slink(self, x, u):
+    @staticmethod
+    def _compute_slink(x, u):
         d = u.depth
         v = u.parent._get_suffix_link()
         while v.depth < d - 1:
             v = v._get_transition_link(x[u.idx + v.depth + 1])
         if v.depth > d - 1:
-            v = self._create_node(x, v, d-1)
+            v = STree._create_node(x, v, d-1)
         u._add_suffix_link(v)
 
 
@@ -484,14 +487,12 @@ class _SNode:
             return False
 
     def _get_transition_link(self, suffix):
-        if self._has_transition(suffix):
+        try:
             return self.transition_links[suffix]
-        else:
+        except KeyError:
             return False
 
     def _add_transition_link(self, snode, suffix=''):
-        if self._has_transition(suffix):
-            del self.transition_links[suffix]
         self.transition_links[suffix] = snode
 
     def _has_transition(self, suffix):
