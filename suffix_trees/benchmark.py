@@ -73,7 +73,6 @@ def bwt_entropy(z):
         """Apply Burrows-Wheeler transform to input string. Given that we won't care about
         ibwt(), we are only interested in the output string and not in the indexlist.
         """
-        z = unicode(z)
         # Table of rotations of string
         table = [z[i:] + z[:i] for i in range(len(z))]
         # Sorted table
