@@ -1,6 +1,7 @@
 import sys, math
 from os.path import commonprefix
 from builtins import str as utext
+from functools import reduce
 try:
     # Python 2
     from itertools import izip
@@ -228,11 +229,9 @@ class STree:
 
     def _generalized_word_starts(self, xs):
         """Helper method returns the starting indexes of strings in GST"""
-        self.word_starts = []
-        i = 0
-        for n in range(len(xs)):
-            self.word_starts.append(i)
-            i += len(xs[n]) + 1
+        self.word_starts = reduce(lambda c, x: c + [c[-1] + x],
+                                  [len(xs[n])+1 for n in range(len(xs))],
+                                  [0])[:-1]
 
     def find(self, y):
         """Returns starting position of the substring y in the string used for
@@ -400,7 +399,7 @@ class STree:
                 yield(unichr(i))
             else:
                 yield(chr(i))
-        raise ValueError("To many input strings.")
+        raise ValueError("Too many input strings.")
 
 
 class _Entropy:
@@ -521,5 +520,5 @@ class _SNode:
         if self.is_leaf():
             return [self]
         else:
-            return [x for n in self.transition_links.values() for x in n._get_leaves()]
+            return {x for n in self.transition_links.values() for x in n._get_leaves()}
 
