@@ -1,4 +1,5 @@
-from suffix_trees import STree
+#from suffix_trees import STree
+import STree
 import random, string
 
 import time
