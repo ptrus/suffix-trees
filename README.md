@@ -1,8 +1,11 @@
 # suffix_trees
-Python implementation of Suffix Trees and Generalized Suffix Trees. Provided also methods with typcal aplications of STrees and GSTrees. 
+Python implementation of Suffix Trees and Generalized Suffix Trees. Also provided methods with typcal applications of STrees and GSTrees. 
 
 ### Installation
+
+```bash
 pip install suffix-trees
+```
 
 ### Usage
 
@@ -19,4 +22,3 @@ a = ["xxxabcxxx", "adsaabc", "ytysabcrew", "qqqabcqw", "aaabc"]
 st = STree.STree(a)
 print(st.lcs()) # "abc"
 ```
-
