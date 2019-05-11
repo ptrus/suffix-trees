@@ -1,4 +1,6 @@
 import sys
+from functools import reduce
+from operator import add
 
 
 class STree():
@@ -142,7 +144,7 @@ class STree():
                 i+=1
         return i
 
-    def lcs(self, stringIdxs=-1):
+    def lcs(self, stringIdxs=-1, return_str=False):
         """Returns the Largest Common Substring of Strings provided in stringIdxs.
         If stringIdxs is not provided, the LCS of all strings is returned.
 
@@ -156,7 +158,53 @@ class STree():
         deepestNode = self._find_lcs(self.root, stringIdxs)
         start = deepestNode.idx
         end = deepestNode.idx + deepestNode.depth
-        return self.word[start:end]
+        if return_str: return self.word[start:end]
+        else: return start, end
+
+    def find_matching_blocks(self, stringIdxs=-1, return_str=False, remove_redundant=True):
+        '''
+        return all the matches
+
+        Args:
+            stringIdxs: (optional) a set of indices of strings to compare
+            return_str: (optional) if this function should return actual strings
+                or just a list of tuples(start, end).
+            remove_redundant: (optional) if this function should remove redundant matches
+                e.g. if 'abcd' is contained in matches, then
+                    'abc', 'ab', 'a', '' are contained in the matches, obviously.
+                    These results are thus considered 'redundant' in some cases.
+        '''
+        if stringIdxs == -1 or not isinstance(stringIdxs, list):
+            stringIdxs = set(range(len(self.word_starts)))
+        else:
+            stringIdxs = set(stringIdxs)
+
+        nodes = self._find_matches(self.root, stringIdxs)
+        starts = list(map(lambda n: n.idx, nodes))
+        ends = list(map(lambda n: n.idx + n.depth, nodes))
+        matches = list(zip(starts, ends))
+        matches = list(filter(lambda m: m[0] != m[1], matches))
+        if remove_redundant:
+            new_matches = []
+            end_set = set(ends)
+            for end in end_set:
+                candidates = list(filter(lambda match: match[1] == end, matches))
+                if not candidates: continue
+                # Choose the match with the minimum start index
+                new_matches.append(min(candidates, key=lambda match: match[0]))
+            matches = new_matches
+        if return_str: return list(map(lambda match: self.word[match[0]: match[1]], matches))
+        else: return matches
+
+    def _find_matches(self, node, stringIdxs):
+        """Helper method that finds ALL maches by traversing the labeled GSD."""
+        nodes = [self._find_matches(n, stringIdxs)
+            for (n,_) in node.transition_links
+            if n.generalized_idxs.issuperset(stringIdxs)]
+
+        nodes = reduce(add, nodes, [node])
+
+        return nodes
 
     def _find_lcs(self, node, stringIdxs):
         """Helper method that finds LCS by traversing the labeled GSD."""
