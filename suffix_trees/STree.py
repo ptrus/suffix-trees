@@ -55,8 +55,8 @@ class STree():
         u = self.root
         d = 0
         for i in range(len(x)):
-            while u.depth == d and u._has_transition(x[d+i]):
-                u = u._get_transition_link(x[d+i])
+            while u.depth == d and u._has_transition(x[d + i]):
+                u = u._get_transition_link(x[d + i])
                 d = d + 1
                 while d < u.depth and x[u.idx + d] == x[i + d]:
                     d = d + 1
@@ -74,9 +74,9 @@ class STree():
         i = u.idx
         p = u.parent
         v = _SNode(idx=i, depth=d)
-        v._add_transition_link(u, x[i+d])
+        v._add_transition_link(u, x[i + d])
         u.parent = v
-        p._add_transition_link(v, x[i+p.depth])
+        p._add_transition_link(v, x[i + p.depth])
         v.parent = p
         return v
 
@@ -94,7 +94,7 @@ class STree():
         while v.depth < d - 1:
             v = v._get_transition_link(x[u.idx + v.depth + 1])
         if v.depth > d - 1:
-            v = self._create_node(x, v, d-1)
+            v = self._create_node(x, v, d - 1)
         u._add_suffix_link(v)
 
     def _build_Ukkonen(self, x):
@@ -124,7 +124,7 @@ class STree():
         if node.is_leaf():
             x = {self._get_word_start_index(node.idx)}
         else:
-            x = {n for ns in node.transition_links for n in ns[0].generalized_idxs}
+            x = {n for ns in node.transition_links.values() for n in ns.generalized_idxs}
         node.generalized_idxs = x
 
     def _get_word_start_index(self, idx):
@@ -157,7 +157,7 @@ class STree():
     def _find_lcs(self, node, stringIdxs):
         """Helper method that finds LCS by traversing the labeled GSD."""
         nodes = [self._find_lcs(n, stringIdxs)
-                 for (n, _) in node.transition_links
+                 for n in node.transition_links.values()
                  if n.generalized_idxs.issuperset(stringIdxs)]
 
         if nodes == []:
@@ -189,7 +189,7 @@ class STree():
                 return node.idx
 
             i = 0
-            while(i < len(edge) and edge[i] == y[0]):
+            while (i < len(edge) and edge[i] == y[0]):
                 y = y[1:]
                 i += 1
 
@@ -211,7 +211,7 @@ class STree():
                 break
 
             i = 0
-            while(i < len(edge) and edge[i] == y[0]):
+            while (i < len(edge) and edge[i] == y[0]):
                 y = y[1:]
                 i += 1
 
@@ -240,7 +240,8 @@ class STree():
         UPPAs = list(list(range(0xE000, 0xF8FF+1)) +
                      list(range(0xF0000, 0xFFFFD+1)) + list(range(0x100000, 0x10FFFD+1)))
         for i in UPPAs:
-            yield(chr(i))
+            yield (chr(i))
+
         raise ValueError("To many input strings.")
 
 
@@ -252,7 +253,7 @@ class _SNode():
     def __init__(self, idx=-1, parentNode=None, depth=-1):
         # Links
         self._suffix_link = None
-        self.transition_links = []
+        self.transition_links = {}
         # Properties
         self.idx = idx
         self.depth = depth
@@ -260,8 +261,8 @@ class _SNode():
         self.generalized_idxs = {}
 
     def __str__(self):
-        return("SNode: idx:" + str(self.idx) + " depth:"+str(self.depth) +
-               " transitons:" + str(self.transition_links))
+        return ("SNode: idx:" + str(self.idx) + " depth:" + str(self.depth) +
+                " transitons:" + str(list(self.transition_links.keys())))
 
     def _add_suffix_link(self, snode):
         self._suffix_link = snode
@@ -273,28 +274,19 @@ class _SNode():
             return False
 
     def _get_transition_link(self, suffix):
-        for node, _suffix in self.transition_links:
-            if _suffix == '__@__' or suffix == _suffix:
-                return node
-        return False
+        return False if suffix not in self.transition_links else self.transition_links[suffix]
 
     def _add_transition_link(self, snode, suffix=''):
-        tl = self._get_transition_link(suffix)
-        if tl:  # TODO: imporve this.
-            self.transition_links.remove((tl, suffix))
-        self.transition_links.append((snode, suffix))
+        self.transition_links[suffix] = snode
 
     def _has_transition(self, suffix):
-        for node, _suffix in self.transition_links:
-            if _suffix == '__@__' or suffix == _suffix:
-                return True
-        return False
+        return suffix in self.transition_links
 
     def is_leaf(self):
-        return self.transition_links == []
+        return len(self.transition_links) == 0
 
     def _traverse(self, f):
-        for (node, _) in self.transition_links:
+        for node in self.transition_links.values():
             node._traverse(f)
         f(self)
 
@@ -302,4 +294,4 @@ class _SNode():
         if self.is_leaf():
             return [self]
         else:
-            return [x for (n, _) in self.transition_links for x in n._get_leaves()]
+            return [x for n in self.transition_links.values() for x in n._get_leaves()]
