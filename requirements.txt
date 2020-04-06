@@ -1,3 +1,4 @@
-hypothesis
-pytest
 flake8
+hypothesis
+pypandoc
+pytest
