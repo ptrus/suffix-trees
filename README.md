@@ -1,4 +1,7 @@
 # suffix_trees
+
+![ci](https://github.com/ptrus/suffix-trees/workflows/ci/badge.svg)
+
 Python implementation of Suffix Trees and Generalized Suffix Trees. Also provided methods with typcal applications of STrees and GSTrees. 
 
 ### Installation

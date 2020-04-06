@@ -65,3 +65,4 @@ target/
 # Other
 INSTALL
 README.rst
+suffix_trees/test/vectors.txt

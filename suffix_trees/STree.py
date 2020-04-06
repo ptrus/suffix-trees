@@ -1,8 +1,6 @@
-import sys
-
-
 class STree():
     """Class representing the suffix tree."""
+
     def __init__(self, input=''):
         self.root = _SNode()
         self.root.depth = 0
@@ -11,7 +9,7 @@ class STree():
         self.root._add_suffix_link(self.root)
 
         if not input == '':
-           self.build(input)
+            self.build(input)
 
     def _check_input(self, input):
         """Checks the validity of the input.
@@ -24,8 +22,7 @@ class STree():
             if all(isinstance(item, str) for item in input):
                 return 'gst'
 
-        raise ValueError("String argument should be of type String or"
-                                     " a list of strings")
+        raise ValueError("String argument should be of type String or a list of strings")
 
     def build(self, x):
         """Builds the Suffix tree on the given input.
@@ -77,7 +74,7 @@ class STree():
         i = u.idx
         p = u.parent
         v = _SNode(idx=i, depth=d)
-        v._add_transition_link(u,x[i+d])
+        v._add_transition_link(u, x[i+d])
         u.parent = v
         p._add_transition_link(v, x[i+p.depth])
         v.parent = p
@@ -99,7 +96,6 @@ class STree():
         if v.depth > d - 1:
             v = self._create_node(x, v, d-1)
         u._add_suffix_link(v)
-
 
     def _build_Ukkonen(self, x):
         """Builds a Suffix tree using Ukkonen's online O(n) algorithm.
@@ -139,7 +135,7 @@ class STree():
             if idx < _idx:
                 return i
             else:
-                i+=1
+                i += 1
         return i
 
     def lcs(self, stringIdxs=-1):
@@ -161,8 +157,8 @@ class STree():
     def _find_lcs(self, node, stringIdxs):
         """Helper method that finds LCS by traversing the labeled GSD."""
         nodes = [self._find_lcs(n, stringIdxs)
-            for (n,_) in node.transition_links
-            if n.generalized_idxs.issuperset(stringIdxs)]
+                 for (n, _) in node.transition_links
+                 if n.generalized_idxs.issuperset(stringIdxs)]
 
         if nodes == []:
             return node
@@ -191,24 +187,23 @@ class STree():
             edge = self._edgeLabel(node, node.parent)
             if edge.startswith(y):
                 return node.idx
-            
+
             i = 0
             while(i < len(edge) and edge[i] == y[0]):
                 y = y[1:]
                 i += 1
-            
+
             if i != 0:
                 if i == len(edge) and y != '':
                     pass
                 else:
                     return -1
-            
+
             node = node._get_transition_link(y[0])
             if not node:
                 return -1
 
     def find_all(self, y):
-        y_input = y
         node = self.root
         while True:
             edge = self._edgeLabel(node, node.parent)
@@ -219,7 +214,7 @@ class STree():
             while(i < len(edge) and edge[i] == y[0]):
                 y = y[1:]
                 i += 1
-            
+
             if i != 0:
                 if i == len(edge) and y != '':
                     pass
@@ -235,26 +230,23 @@ class STree():
 
     def _edgeLabel(self, node, parent):
         """Helper method, returns the edge label between a node and it's parent"""
-        return self.word[node.idx + parent.depth : node.idx + node.depth]
-
+        return self.word[node.idx + parent.depth: node.idx + node.depth]
 
     def _terminalSymbolsGenerator(self):
         """Generator of unique terminal symbols used for building the Generalized Suffix Tree.
         Unicode Private Use Area U+E000..U+F8FF is used to ensure that terminal symbols
         are not part of the input string.
         """
-        py2 = sys.version[0] < '3'
-        UPPAs = list(list(range(0xE000,0xF8FF+1)) + list(range(0xF0000,0xFFFFD+1)) + list(range(0x100000, 0x10FFFD+1)))
+        UPPAs = list(list(range(0xE000, 0xF8FF+1)) +
+                     list(range(0xF0000, 0xFFFFD+1)) + list(range(0x100000, 0x10FFFD+1)))
         for i in UPPAs:
-            if py2:
-                yield(unichr(i))
-            else:
-                yield(chr(i))
+            yield(chr(i))
         raise ValueError("To many input strings.")
 
 
 class _SNode():
     """Class representing a Node in the Suffix tree."""
+
     def __init__(self, idx=-1, parentNode=None, depth=-1):
         # Links
         self._suffix_link = None
@@ -266,32 +258,32 @@ class _SNode():
         self.generalized_idxs = {}
 
     def __str__(self):
-        return("SNode: idx:"+ str(self.idx) + " depth:"+str(self.depth) +
-            " transitons:" + str(self.transition_links))
+        return("SNode: idx:" + str(self.idx) + " depth:"+str(self.depth) +
+               " transitons:" + str(self.transition_links))
 
     def _add_suffix_link(self, snode):
         self._suffix_link = snode
 
     def _get_suffix_link(self):
-        if self._suffix_link != None:
+        if self._suffix_link is not None:
             return self._suffix_link
         else:
             return False
 
     def _get_transition_link(self, suffix):
-        for node,_suffix in self.transition_links:
+        for node, _suffix in self.transition_links:
             if _suffix == '__@__' or suffix == _suffix:
                 return node
         return False
 
     def _add_transition_link(self, snode, suffix=''):
         tl = self._get_transition_link(suffix)
-        if tl: # TODO: imporve this.
-            self.transition_links.remove((tl,suffix))
-        self.transition_links.append((snode,suffix))
+        if tl:  # TODO: imporve this.
+            self.transition_links.remove((tl, suffix))
+        self.transition_links.append((snode, suffix))
 
     def _has_transition(self, suffix):
-        for node,_suffix in self.transition_links:
+        for node, _suffix in self.transition_links:
             if _suffix == '__@__' or suffix == _suffix:
                 return True
         return False
@@ -300,7 +292,7 @@ class _SNode():
         return self.transition_links == []
 
     def _traverse(self, f):
-        for (node,_) in self.transition_links:
+        for (node, _) in self.transition_links:
             node._traverse(f)
         f(self)
 
@@ -308,4 +300,4 @@ class _SNode():
         if self.is_leaf():
             return [self]
         else:
-            return [x for (n,_) in self.transition_links for x in n._get_leaves()]
+            return [x for (n, _) in self.transition_links for x in n._get_leaves()]
