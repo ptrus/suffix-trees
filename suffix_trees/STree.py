@@ -245,6 +245,8 @@ class STree():
 
 
 class _SNode():
+    __slots__ = ['_suffix_link', 'transition_links', 'idx', 'depth', 'parent', 'generalized_idxs']
+
     """Class representing a Node in the Suffix tree."""
 
     def __init__(self, idx=-1, parentNode=None, depth=-1):
