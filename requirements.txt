@@ -1,4 +1,6 @@
+codecov
 flake8
 hypothesis
 pypandoc
 pytest
+pytest-cov

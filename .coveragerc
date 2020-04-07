@@ -1,0 +1,3 @@
+[run]
+source=suffix-trees
+omit=suffix_trees/test/*

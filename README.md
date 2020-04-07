@@ -1,6 +1,7 @@
 # suffix_trees
 
 ![ci](https://github.com/ptrus/suffix-trees/workflows/ci/badge.svg)
+[![codecov](https://codecov.io/gh/ptrus/suffix-trees/branch/master/graph/badge.svg)](https://codecov.io/gh/ptrus/suffix-trees)
 
 Python implementation of Suffix Trees and Generalized Suffix Trees. Also provided methods with typcal applications of STrees and GSTrees. 
 
