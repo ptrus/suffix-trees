@@ -16,7 +16,7 @@ jobs:
 
   test:
     # NOTE: This name appears in GitHub's Checks API.
-    name: lint
+    name: tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
