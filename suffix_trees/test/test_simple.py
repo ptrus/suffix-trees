@@ -19,4 +19,4 @@ def test_missing():
 def test_find():
     st = STree.STree("abcdefghab")
     assert st.find("abc") == 0
-    assert st.find_all("ab") == [0, 8]
+    assert st.find_all("ab") == {0, 8}

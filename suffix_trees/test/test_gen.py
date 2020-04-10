@@ -42,4 +42,4 @@ class TestEncoding(unittest.TestCase):
     @given(data())
     def test_find_all_substring_false(self, data):
         (string, substr) = data.draw(string_and_not_substring())
-        assert STree.STree(string).find_all(substr) == []
+        assert STree.STree(string).find_all(substr) == {}
