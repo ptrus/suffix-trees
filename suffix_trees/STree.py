@@ -219,14 +219,14 @@ class STree():
                 if i == len(edge) and y != '':
                     pass
                 else:
-                    return []
+                    return {}
 
             node = node._get_transition_link(y[0])
             if not node:
-                return []
+                return {}
 
         leaves = node._get_leaves()
-        return [n.idx for n in leaves]
+        return {n.idx for n in leaves}
 
     def _edgeLabel(self, node, parent):
         """Helper method, returns the edge label between a node and it's parent"""
@@ -276,7 +276,7 @@ class _SNode():
     def _get_transition_link(self, suffix):
         return False if suffix not in self.transition_links else self.transition_links[suffix]
 
-    def _add_transition_link(self, snode, suffix=''):
+    def _add_transition_link(self, snode, suffix):
         self.transition_links[suffix] = snode
 
     def _has_transition(self, suffix):
@@ -291,7 +291,10 @@ class _SNode():
         f(self)
 
     def _get_leaves(self):
+        # Python <3.6 dicts don't perserve insertion order (and even after, we
+        # shouldn't rely on dicts perserving the order) therefore these can be
+        # out-of-order, so we return a set of leaves.
         if self.is_leaf():
-            return [self]
+            return {self}
         else:
-            return [x for n in self.transition_links.values() for x in n._get_leaves()]
+            return {x for n in self.transition_links.values() for x in n._get_leaves()}
