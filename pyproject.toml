@@ -1,0 +1,54 @@
+[project]
+name = "suffix-trees"
+version = "0.4.0"
+description = "Suffix trees, generalized suffix trees and string processing methods"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Peter Us", email = "ptrusr@gmail.com" }]
+requires-python = ">=3.9"
+dependencies = []
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Text Processing",
+]
+
+[project.urls]
+Homepage = "https://github.com/ptrus/suffix-trees"
+Issues = "https://github.com/ptrus/suffix-trees/issues"
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "suffix_trees"
+module-root = ""
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "hypothesis",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 127
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.coverage.run]
+source = ["suffix_trees"]
+omit = ["suffix_trees/test/*"]

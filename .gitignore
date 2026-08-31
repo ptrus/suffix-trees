@@ -62,6 +62,9 @@ target/
 # Hypothesis files
 .hypothesis
 
+# Virtual environments
+.venv/
+
 # Other
 INSTALL
 README.rst

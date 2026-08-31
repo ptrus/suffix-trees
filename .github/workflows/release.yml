@@ -1,0 +1,28 @@
+name: release
+
+# Publish to PyPI when a version tag (e.g. v0.4.0) is pushed.
+# Uses PyPI trusted publishing (OIDC), so no API token secret is needed:
+# configure this repository and workflow as a trusted publisher at
+# https://pypi.org/manage/project/suffix-trees/settings/publishing/
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    name: publish to PyPI
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      # Required for PyPI trusted publishing.
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Build distributions
+        run: uv build
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

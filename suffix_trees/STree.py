@@ -1,50 +1,81 @@
-class STree():
+from __future__ import annotations
+
+from collections.abc import Generator, Iterable
+from typing import Callable
+
+
+class STree:
     """Class representing the suffix tree."""
 
-    def __init__(self, input=''):
+    def __init__(self, data: str | bytes | list[str] | list[bytes] | None = None):
         self.root = _SNode()
         self.root.depth = 0
         self.root.idx = 0
         self.root.parent = self.root
         self.root._add_suffix_link(self.root)
+        self.word = ""
+        self.word_starts: list[int] = []
+        self._bytes_input = False
 
-        if not input == '':
-            self.build(input)
+        if data:
+            self.build(data)
 
-    def _check_input(self, input):
+    def _check_input(self, data: str | bytes | list[str] | list[bytes]) -> str:
         """Checks the validity of the input.
 
         In case of an invalid input throws ValueError.
         """
-        if isinstance(input, str):
+        if isinstance(data, (str, bytes)):
             return 'st'
-        elif isinstance(input, list):
-            if all(isinstance(item, str) for item in input):
+        elif isinstance(data, list):
+            if all(isinstance(item, str) for item in data):
+                return 'gst'
+            if all(isinstance(item, bytes) for item in data):
                 return 'gst'
 
-        raise ValueError("String argument should be of type String or a list of strings")
+        raise ValueError("Argument should be str, bytes, a list of str or a list of bytes")
 
-    def build(self, x):
+    def _decode(self, data: str | bytes) -> str:
+        """Helper method that maps input to the internal string representation.
+
+        Bytes are decoded via latin-1, which maps each byte 1:1 to U+0000..U+00FF.
+        This preserves offsets, keeps every byte value distinct and never collides
+        with the private-use-area terminal symbols.
+        """
+        if isinstance(data, bytes):
+            self._bytes_input = True
+            return data.decode('latin-1')
+        return data
+
+    def _encode(self, word: str) -> str | bytes:
+        """Helper method that maps an internal string back to the input type."""
+        if self._bytes_input:
+            return word.encode('latin-1')
+        return word
+
+    def build(self, x: str | bytes | list[str] | list[bytes]) -> None:
         """Builds the Suffix tree on the given input.
         If the input is of type List of Strings:
         Generalized Suffix Tree is built.
 
-        :param x: String or List of Strings
+        :param x: String or List of Strings (str or bytes)
         """
-        type = self._check_input(x)
+        tree_type = self._check_input(x)
 
-        if type == 'st':
+        if tree_type == 'st':
+            x = self._decode(x)
             x += next(self._terminalSymbolsGenerator())
             self._build(x)
-        if type == 'gst':
+        if tree_type == 'gst':
+            x = [self._decode(item) for item in x]
             self._build_generalized(x)
 
-    def _build(self, x):
+    def _build(self, x: str) -> None:
         """Builds a Suffix tree."""
         self.word = x
         self._build_McCreight(x)
 
-    def _build_McCreight(self, x):
+    def _build_McCreight(self, x: str) -> None:
         """Builds a Suffix tree using McCreight O(n) algorithm.
 
         Algorithm based on:
@@ -70,7 +101,7 @@ class STree():
             if d < 0:
                 d = 0
 
-    def _create_node(self, x, u, d):
+    def _create_node(self, x: str, u: _SNode, d: int) -> _SNode:
         i = u.idx
         p = u.parent
         v = _SNode(idx=i, depth=d)
@@ -80,7 +111,7 @@ class STree():
         v.parent = p
         return v
 
-    def _create_leaf(self, x, i, u, d):
+    def _create_leaf(self, x: str, i: int, u: _SNode, d: int) -> _SNode:
         w = _SNode()
         w.idx = i
         w.depth = len(x) - i
@@ -88,7 +119,7 @@ class STree():
         w.parent = u
         return w
 
-    def _compute_slink(self, x, u):
+    def _compute_slink(self, x: str, u: _SNode) -> None:
         d = u.depth
         v = u.parent._get_suffix_link()
         while v.depth < d - 1:
@@ -97,7 +128,7 @@ class STree():
             v = self._create_node(x, v, d - 1)
         u._add_suffix_link(v)
 
-    def _build_Ukkonen(self, x):
+    def _build_Ukkonen(self, x: str) -> None:
         """Builds a Suffix tree using Ukkonen's online O(n) algorithm.
 
         Algorithm based on:
@@ -106,7 +137,7 @@ class STree():
         # TODO.
         raise NotImplementedError()
 
-    def _build_generalized(self, xs):
+    def _build_generalized(self, xs: list[str]) -> None:
         """Builds a Generalized Suffix Tree (GST) from the array of strings provided.
         """
         terminal_gen = self._terminalSymbolsGenerator()
@@ -117,7 +148,7 @@ class STree():
         self._build(_xs)
         self.root._traverse(self._label_generalized)
 
-    def _label_generalized(self, node):
+    def _label_generalized(self, node: _SNode) -> None:
         """Helper method that labels the nodes of GST with indexes of strings
         found in their descendants.
         """
@@ -127,7 +158,7 @@ class STree():
             x = {n for ns in node.transition_links.values() for n in ns.generalized_idxs}
         node.generalized_idxs = x
 
-    def _get_word_start_index(self, idx):
+    def _get_word_start_index(self, idx: int) -> int:
         """Helper method that returns the index of the string based on node's
         starting index"""
         i = 0
@@ -138,7 +169,7 @@ class STree():
                 i += 1
         return i
 
-    def lcs(self, stringIdxs=-1):
+    def lcs(self, stringIdxs: int | list[int] = -1) -> str | bytes:
         """Returns the Largest Common Substring of Strings provided in stringIdxs.
         If stringIdxs is not provided, the LCS of all strings is returned.
 
@@ -152,9 +183,9 @@ class STree():
         deepestNode = self._find_lcs(self.root, stringIdxs)
         start = deepestNode.idx
         end = deepestNode.idx + deepestNode.depth
-        return self.word[start:end]
+        return self._encode(self.word[start:end])
 
-    def _find_lcs(self, node, stringIdxs):
+    def _find_lcs(self, node: _SNode, stringIdxs: set[int]) -> _SNode:
         """Helper method that finds LCS by traversing the labeled GSD."""
         nodes = [self._find_lcs(n, stringIdxs)
                  for n in node.transition_links.values()
@@ -166,7 +197,49 @@ class STree():
         deepestNode = max(nodes, key=lambda n: n.depth)
         return deepestNode
 
-    def _generalized_word_starts(self, xs):
+    def lcsm(self, stringIdxs: int | list[int] = -1) -> list[str] | list[bytes]:
+        """Returns all Largest Common Substrings of Strings provided in stringIdxs.
+        Like lcs(), but returns a sorted list of all common substrings of maximal
+        length instead of an arbitrary one of them.
+        If stringIdxs is not provided, the LCSs of all strings are returned.
+
+        ::param stringIdxs: Optional: List of indexes of strings.
+        """
+        if stringIdxs == -1 or not isinstance(stringIdxs, list):
+            stringIdxs = set(range(len(self.word_starts)))
+        else:
+            stringIdxs = set(stringIdxs)
+
+        deepestNodes: list[_SNode] = []
+        self._find_lcsm(self.root, stringIdxs, deepestNodes)
+        if not deepestNodes:
+            return []
+
+        maxDepth = max(n.depth for n in deepestNodes)
+        if maxDepth == 0:
+            return []
+
+        return sorted(self._encode(self.word[n.idx:n.idx + n.depth])
+                      for n in deepestNodes if n.depth == maxDepth)
+
+    def _find_lcsm(self, node: _SNode, stringIdxs: set[int], out: list[_SNode]) -> None:
+        """Helper method that collects all deepest nodes common to stringIdxs.
+
+        Appends to out every node whose subtree contains suffixes of all the
+        requested strings and that has no such descendant (i.e. is locally
+        deepest). Every common substring of maximal length labels one of them.
+        """
+        children = [n for n in node.transition_links.values()
+                    if n.generalized_idxs.issuperset(stringIdxs)]
+
+        if not children:
+            out.append(node)
+            return
+
+        for child in children:
+            self._find_lcsm(child, stringIdxs, out)
+
+    def _generalized_word_starts(self, xs: list[str]) -> None:
         """Helper method returns the starting indexes of strings in GST"""
         self.word_starts = []
         i = 0
@@ -174,14 +247,16 @@ class STree():
             self.word_starts.append(i)
             i += len(xs[n]) + 1
 
-    def find(self, y):
+    def find(self, y: str | bytes) -> int:
         """Returns starting position of the substring y in the string used for
         building the Suffix tree.
 
-        :param y: String
+        :param y: String (str or bytes)
         :return: Index of the starting position of string y in the string used for building the Suffix tree
                  -1 if y is not a substring.
         """
+        if isinstance(y, bytes):
+            y = y.decode('latin-1')
         node = self.root
         while True:
             edge = self._edgeLabel(node, node.parent)
@@ -203,7 +278,16 @@ class STree():
             if not node:
                 return -1
 
-    def find_all(self, y):
+    def find_all(self, y: str | bytes) -> set[int]:
+        """Returns starting positions of all occurrences of the substring y
+        in the string used for building the Suffix tree.
+
+        :param y: String (str or bytes)
+        :return: Set of starting positions of string y in the string used for building the Suffix tree.
+                 Empty set if y is not a substring.
+        """
+        if isinstance(y, bytes):
+            y = y.decode('latin-1')
         node = self.root
         while True:
             edge = self._edgeLabel(node, node.parent)
@@ -219,78 +303,75 @@ class STree():
                 if i == len(edge) and y != '':
                     pass
                 else:
-                    return {}
+                    return set()
 
             node = node._get_transition_link(y[0])
             if not node:
-                return {}
+                return set()
 
         leaves = node._get_leaves()
         return {n.idx for n in leaves}
 
-    def _edgeLabel(self, node, parent):
+    def _edgeLabel(self, node: _SNode, parent: _SNode) -> str:
         """Helper method, returns the edge label between a node and it's parent"""
         return self.word[node.idx + parent.depth: node.idx + node.depth]
 
-    def _terminalSymbolsGenerator(self):
+    def _terminalSymbolsGenerator(self) -> Generator[str, None, None]:
         """Generator of unique terminal symbols used for building the Generalized Suffix Tree.
         Unicode Private Use Area U+E000..U+F8FF is used to ensure that terminal symbols
         are not part of the input string.
         """
-        UPPAs = list(list(range(0xE000, 0xF8FF+1)) +
-                     list(range(0xF0000, 0xFFFFD+1)) + list(range(0x100000, 0x10FFFD+1)))
+        UPPAs = list(list(range(0xE000, 0xF8FF + 1)) +
+                     list(range(0xF0000, 0xFFFFD + 1)) + list(range(0x100000, 0x10FFFD + 1)))
         for i in UPPAs:
             yield (chr(i))
 
-        raise ValueError("To many input strings.")
+        raise ValueError("Too many input strings.")
 
 
-class _SNode():
+class _SNode:
     __slots__ = ['_suffix_link', 'transition_links', 'idx', 'depth', 'parent', 'generalized_idxs']
 
     """Class representing a Node in the Suffix tree."""
 
-    def __init__(self, idx=-1, parentNode=None, depth=-1):
+    def __init__(self, idx: int = -1, parentNode: _SNode | None = None, depth: int = -1):
         # Links
-        self._suffix_link = None
-        self.transition_links = {}
+        self._suffix_link: _SNode | None = None
+        self.transition_links: dict[str, _SNode] = {}
         # Properties
         self.idx = idx
         self.depth = depth
         self.parent = parentNode
-        self.generalized_idxs = {}
+        self.generalized_idxs: set[int] = set()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ("SNode: idx:" + str(self.idx) + " depth:" + str(self.depth) +
                 " transitons:" + str(list(self.transition_links.keys())))
 
-    def _add_suffix_link(self, snode):
+    def _add_suffix_link(self, snode: _SNode) -> None:
         self._suffix_link = snode
 
-    def _get_suffix_link(self):
-        if self._suffix_link is not None:
-            return self._suffix_link
-        else:
-            return False
+    def _get_suffix_link(self) -> _SNode | None:
+        return self._suffix_link
 
-    def _get_transition_link(self, suffix):
-        return False if suffix not in self.transition_links else self.transition_links[suffix]
+    def _get_transition_link(self, suffix: str) -> _SNode | None:
+        return self.transition_links.get(suffix)
 
-    def _add_transition_link(self, snode, suffix):
+    def _add_transition_link(self, snode: _SNode, suffix: str) -> None:
         self.transition_links[suffix] = snode
 
-    def _has_transition(self, suffix):
+    def _has_transition(self, suffix: str) -> bool:
         return suffix in self.transition_links
 
-    def is_leaf(self):
+    def is_leaf(self) -> bool:
         return len(self.transition_links) == 0
 
-    def _traverse(self, f):
+    def _traverse(self, f: Callable[[_SNode], None]) -> None:
         for node in self.transition_links.values():
             node._traverse(f)
         f(self)
 
-    def _get_leaves(self):
+    def _get_leaves(self) -> Iterable[_SNode]:
         # Python <3.6 dicts don't perserve insertion order (and even after, we
         # shouldn't rely on dicts perserving the order) therefore these can be
         # out-of-order, so we return a set of leaves.
