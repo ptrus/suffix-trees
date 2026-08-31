@@ -1,13 +1,30 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Generator, Iterable
 from typing import Callable
+
+# Depth sentinel for "open" leaves of an online (Ukkonen) tree: their edges
+# implicitly extend to the current end of the text. Slicing self.word with it
+# naturally clamps to the text processed so far.
+_OPEN_LEAF_DEPTH = sys.maxsize
 
 
 class STree:
     """Class representing the suffix tree."""
 
-    def __init__(self, data: str | bytes | list[str] | list[bytes] | None = None):
+    def __init__(self, data: str | bytes | list[str] | list[bytes] | None = None,
+                 online: bool = False):
+        """Creates a suffix tree.
+
+        :param data: String, bytes or a list of those to build the tree from.
+        :param online: If True, the tree is built online (Ukkonen's algorithm):
+                       text is fed incrementally with append() - data, if given,
+                       is the first appended chunk - and the tree can be queried
+                       between appends. If False (default), the tree is built in
+                       one go from data (McCreight's algorithm).
+        """
+        self.online = online
         self.root = _SNode()
         self.root.depth = 0
         self.root.idx = 0
@@ -16,9 +33,18 @@ class STree:
         self.word = ""
         self.word_starts: list[int] = []
         self._bytes_input = False
+        # Online (Ukkonen) construction state.
+        self._processed = 0
+        self._active_node = self.root
+        self._active_edge = 0
+        self._active_length = 0
+        self._remainder = 0
 
         if data:
-            self.build(data)
+            if online:
+                self.append(data)
+            else:
+                self.build(data)
 
     def _check_input(self, data: str | bytes | list[str] | list[bytes]) -> str:
         """Checks the validity of the input.
@@ -60,6 +86,10 @@ class STree:
 
         :param x: String or List of Strings (str or bytes)
         """
+        if self.online:
+            raise ValueError("This tree is online; use append() instead of build()")
+        if self.word:
+            raise ValueError("Tree has already been built; create a new STree instead")
         tree_type = self._check_input(x)
 
         if tree_type == 'st':
@@ -69,6 +99,23 @@ class STree:
         if tree_type == 'gst':
             x = [self._decode(item) for item in x]
             self._build_generalized(x)
+
+    def append(self, data: str | bytes) -> None:
+        """Appends data to an online suffix tree (STree(online=True)).
+
+        The tree can be queried between appends: it is the implicit suffix
+        tree of the text appended so far. find() is exact on it; find_all()
+        may miss occurrences that are suffixes of the current text and
+        prefixes of other suffixes, since those have no leaf yet.
+
+        :param data: String (str or bytes) to append.
+        """
+        if not self.online:
+            raise ValueError("append() requires STree(online=True)")
+        if not isinstance(data, (str, bytes)):
+            raise ValueError("Argument should be str or bytes")
+        self.word += self._decode(data)
+        self._ukkonen_advance()
 
     def _build(self, x: str) -> None:
         """Builds a Suffix tree."""
@@ -128,14 +175,80 @@ class STree:
             v = self._create_node(x, v, d - 1)
         u._add_suffix_link(v)
 
-    def _build_Ukkonen(self, x: str) -> None:
-        """Builds a Suffix tree using Ukkonen's online O(n) algorithm.
+    def _ukkonen_advance(self) -> None:
+        """Advances Ukkonen's online O(n) construction over the not yet
+        processed suffix of self.word.
 
         Algorithm based on:
         Ukkonen, Esko. "On-line construction of suffix trees." - Algorithmica, 1995.
+
+        The active point is kept as (active_node, active_edge, active_length)
+        and persists on the tree between calls, so the text can arrive in any
+        number of chunks. Leaves are created "open" (depth _OPEN_LEAF_DEPTH):
+        their edges implicitly grow with the text, which is Ukkonen's rule 1.
         """
-        # TODO.
-        raise NotImplementedError()
+        x = self.word
+        n = len(x)
+        root = self.root
+        u = self._active_node
+        ae = self._active_edge      # position in x of the first char of the active edge
+        al = self._active_length
+        remainder = self._remainder  # suffixes still to be inserted
+        for i in range(self._processed, n):
+            remainder += 1
+            last_internal = None
+            while remainder > 0:
+                if al == 0:
+                    ae = i
+                child = u._get_transition_link(x[ae])
+                if child is None:
+                    # Rule 2: no edge starts with x[i] here - add a leaf.
+                    self._create_open_leaf(i - u.depth, u, x[i])
+                    if last_internal is not None:
+                        last_internal._add_suffix_link(u)
+                        last_internal = None
+                else:
+                    edge_length = child.depth - u.depth
+                    if al >= edge_length:
+                        # Walk down: the active point lies beyond this edge.
+                        u = child
+                        ae += edge_length
+                        al -= edge_length
+                        continue
+                    if x[child.idx + u.depth + al] == x[i]:
+                        # Rule 3: x[i] is already on the edge - phase ends.
+                        if last_internal is not None and u is not root:
+                            last_internal._add_suffix_link(u)
+                        al += 1
+                        break
+                    # Rule 2: split the edge and add a leaf.
+                    split = self._create_node(x, child, u.depth + al)
+                    self._create_open_leaf(i - split.depth, split, x[i])
+                    if last_internal is not None:
+                        last_internal._add_suffix_link(split)
+                    last_internal = split
+
+                remainder -= 1
+                if u is root and al > 0:
+                    al -= 1
+                    ae = i - remainder + 1
+                elif u is not root:
+                    slink = u._get_suffix_link()
+                    u = slink if slink is not None else root
+
+        self._processed = n
+        self._active_node = u
+        self._active_edge = ae
+        self._active_length = al
+        self._remainder = remainder
+
+    def _create_open_leaf(self, j: int, u: _SNode, char: str) -> _SNode:
+        """Creates a leaf for suffix j with an open end (its edge implicitly
+        extends to the end of the text processed so far)."""
+        w = _SNode(idx=j, depth=_OPEN_LEAF_DEPTH)
+        u._add_transition_link(w, char)
+        w.parent = u
+        return w
 
     def _build_generalized(self, xs: list[str]) -> None:
         """Builds a Generalized Suffix Tree (GST) from the array of strings provided.

@@ -37,6 +37,14 @@ print(st.lcsm())  # ["abc", "kle"]
 # bytes input works too (find/find_all/lcs/lcsm then accept and return bytes).
 st = STree.STree(b"abcdefghab")
 print(st.find(b"abc"))  # 0
+
+# Online mode (Ukkonen's algorithm): text can be appended incrementally and
+# the tree queried between appends.
+st = STree.STree(online=True)
+st.append("abcab")
+print(st.find("bca"))  # 1
+st.append("xabcd")
+print(st.find("abcd"))  # 6
 ```
 
 ### Development
