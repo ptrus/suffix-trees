@@ -7,7 +7,7 @@ from typing import Callable
 class STree:
     """Class representing the suffix tree."""
 
-    def __init__(self, data: str | list[str] | None = None):
+    def __init__(self, data: str | bytes | list[str] | list[bytes] | None = None):
         self.root = _SNode()
         self.root.depth = 0
         self.root.idx = 0
@@ -15,35 +15,59 @@ class STree:
         self.root._add_suffix_link(self.root)
         self.word = ""
         self.word_starts: list[int] = []
+        self._bytes_input = False
 
         if data:
             self.build(data)
 
-    def _check_input(self, data: str | list[str]) -> str:
+    def _check_input(self, data: str | bytes | list[str] | list[bytes]) -> str:
         """Checks the validity of the input.
 
         In case of an invalid input throws ValueError.
         """
-        if isinstance(data, str):
+        if isinstance(data, (str, bytes)):
             return 'st'
-        elif isinstance(data, list) and all(isinstance(item, str) for item in data):
-            return 'gst'
+        elif isinstance(data, list):
+            if all(isinstance(item, str) for item in data):
+                return 'gst'
+            if all(isinstance(item, bytes) for item in data):
+                return 'gst'
 
-        raise ValueError("String argument should be of type String or a list of strings")
+        raise ValueError("Argument should be str, bytes, a list of str or a list of bytes")
 
-    def build(self, x: str | list[str]) -> None:
+    def _decode(self, data: str | bytes) -> str:
+        """Helper method that maps input to the internal string representation.
+
+        Bytes are decoded via latin-1, which maps each byte 1:1 to U+0000..U+00FF.
+        This preserves offsets, keeps every byte value distinct and never collides
+        with the private-use-area terminal symbols.
+        """
+        if isinstance(data, bytes):
+            self._bytes_input = True
+            return data.decode('latin-1')
+        return data
+
+    def _encode(self, word: str) -> str | bytes:
+        """Helper method that maps an internal string back to the input type."""
+        if self._bytes_input:
+            return word.encode('latin-1')
+        return word
+
+    def build(self, x: str | bytes | list[str] | list[bytes]) -> None:
         """Builds the Suffix tree on the given input.
         If the input is of type List of Strings:
         Generalized Suffix Tree is built.
 
-        :param x: String or List of Strings
+        :param x: String or List of Strings (str or bytes)
         """
         tree_type = self._check_input(x)
 
         if tree_type == 'st':
+            x = self._decode(x)
             x += next(self._terminalSymbolsGenerator())
             self._build(x)
         if tree_type == 'gst':
+            x = [self._decode(item) for item in x]
             self._build_generalized(x)
 
     def _build(self, x: str) -> None:
@@ -145,7 +169,7 @@ class STree:
                 i += 1
         return i
 
-    def lcs(self, stringIdxs: int | list[int] = -1) -> str:
+    def lcs(self, stringIdxs: int | list[int] = -1) -> str | bytes:
         """Returns the Largest Common Substring of Strings provided in stringIdxs.
         If stringIdxs is not provided, the LCS of all strings is returned.
 
@@ -159,7 +183,7 @@ class STree:
         deepestNode = self._find_lcs(self.root, stringIdxs)
         start = deepestNode.idx
         end = deepestNode.idx + deepestNode.depth
-        return self.word[start:end]
+        return self._encode(self.word[start:end])
 
     def _find_lcs(self, node: _SNode, stringIdxs: set[int]) -> _SNode:
         """Helper method that finds LCS by traversing the labeled GSD."""
@@ -173,6 +197,48 @@ class STree:
         deepestNode = max(nodes, key=lambda n: n.depth)
         return deepestNode
 
+    def lcsm(self, stringIdxs: int | list[int] = -1) -> list[str] | list[bytes]:
+        """Returns all Largest Common Substrings of Strings provided in stringIdxs.
+        Like lcs(), but returns a sorted list of all common substrings of maximal
+        length instead of an arbitrary one of them.
+        If stringIdxs is not provided, the LCSs of all strings are returned.
+
+        ::param stringIdxs: Optional: List of indexes of strings.
+        """
+        if stringIdxs == -1 or not isinstance(stringIdxs, list):
+            stringIdxs = set(range(len(self.word_starts)))
+        else:
+            stringIdxs = set(stringIdxs)
+
+        deepestNodes: list[_SNode] = []
+        self._find_lcsm(self.root, stringIdxs, deepestNodes)
+        if not deepestNodes:
+            return []
+
+        maxDepth = max(n.depth for n in deepestNodes)
+        if maxDepth == 0:
+            return []
+
+        return sorted(self._encode(self.word[n.idx:n.idx + n.depth])
+                      for n in deepestNodes if n.depth == maxDepth)
+
+    def _find_lcsm(self, node: _SNode, stringIdxs: set[int], out: list[_SNode]) -> None:
+        """Helper method that collects all deepest nodes common to stringIdxs.
+
+        Appends to out every node whose subtree contains suffixes of all the
+        requested strings and that has no such descendant (i.e. is locally
+        deepest). Every common substring of maximal length labels one of them.
+        """
+        children = [n for n in node.transition_links.values()
+                    if n.generalized_idxs.issuperset(stringIdxs)]
+
+        if not children:
+            out.append(node)
+            return
+
+        for child in children:
+            self._find_lcsm(child, stringIdxs, out)
+
     def _generalized_word_starts(self, xs: list[str]) -> None:
         """Helper method returns the starting indexes of strings in GST"""
         self.word_starts = []
@@ -181,14 +247,16 @@ class STree:
             self.word_starts.append(i)
             i += len(xs[n]) + 1
 
-    def find(self, y: str) -> int:
+    def find(self, y: str | bytes) -> int:
         """Returns starting position of the substring y in the string used for
         building the Suffix tree.
 
-        :param y: String
+        :param y: String (str or bytes)
         :return: Index of the starting position of string y in the string used for building the Suffix tree
                  -1 if y is not a substring.
         """
+        if isinstance(y, bytes):
+            y = y.decode('latin-1')
         node = self.root
         while True:
             edge = self._edgeLabel(node, node.parent)
@@ -210,14 +278,16 @@ class STree:
             if not node:
                 return -1
 
-    def find_all(self, y: str) -> set[int]:
+    def find_all(self, y: str | bytes) -> set[int]:
         """Returns starting positions of all occurrences of the substring y
         in the string used for building the Suffix tree.
 
-        :param y: String
+        :param y: String (str or bytes)
         :return: Set of starting positions of string y in the string used for building the Suffix tree.
                  Empty set if y is not a substring.
         """
+        if isinstance(y, bytes):
+            y = y.decode('latin-1')
         node = self.root
         while True:
             edge = self._edgeLabel(node, node.parent)
