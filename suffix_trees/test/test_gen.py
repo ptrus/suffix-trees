@@ -1,9 +1,11 @@
-from suffix_trees import STree
-from hypothesis import given, assume
-from hypothesis.strategies import composite, text, integers, data
-from random import sample
-import unittest
 import string
+import unittest
+from random import sample
+
+from hypothesis import assume, given
+from hypothesis.strategies import composite, data, integers, text
+
+from suffix_trees import STree
 
 
 @composite
@@ -42,4 +44,4 @@ class TestEncoding(unittest.TestCase):
     @given(data())
     def test_find_all_substring_false(self, data):
         (string, substr) = data.draw(string_and_not_substring())
-        assert STree.STree(string).find_all(substr) == {}
+        assert STree.STree(string).find_all(substr) == set()

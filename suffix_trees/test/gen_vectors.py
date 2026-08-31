@@ -1,6 +1,6 @@
+import os
 import random
 import string
-import os
 
 random.seed(42)
 
