@@ -37,6 +37,11 @@ print(st.lcsm())  # ["abc", "kle"]
 # bytes input works too (find/find_all/lcs/lcsm then accept and return bytes).
 st = STree.STree(b"abcdefghab")
 print(st.find(b"abc"))  # 0
+
+# The construction algorithm can be chosen explicitly:
+# McCreight (default) or Ukkonen. Both are O(n) and build identical trees.
+st = STree.STree("abcdefghab", builder="ukkonen")
+print(st.find("abc"))  # 0
 ```
 
 ### Development

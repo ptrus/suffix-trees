@@ -7,7 +7,13 @@ from typing import Callable
 class STree:
     """Class representing the suffix tree."""
 
-    def __init__(self, data: str | bytes | list[str] | list[bytes] | None = None):
+    BUILDERS = ('mccreight', 'ukkonen')
+
+    def __init__(self, data: str | bytes | list[str] | list[bytes] | None = None,
+                 builder: str = 'mccreight'):
+        if builder not in self.BUILDERS:
+            raise ValueError(f"Unknown builder {builder!r}, expected one of {self.BUILDERS}")
+        self.builder = builder
         self.root = _SNode()
         self.root.depth = 0
         self.root.idx = 0
@@ -73,7 +79,10 @@ class STree:
     def _build(self, x: str) -> None:
         """Builds a Suffix tree."""
         self.word = x
-        self._build_McCreight(x)
+        if self.builder == 'ukkonen':
+            self._build_Ukkonen(x)
+        else:
+            self._build_McCreight(x)
 
     def _build_McCreight(self, x: str) -> None:
         """Builds a Suffix tree using McCreight O(n) algorithm.
@@ -133,9 +142,58 @@ class STree:
 
         Algorithm based on:
         Ukkonen, Esko. "On-line construction of suffix trees." - Algorithmica, 1995.
+
+        The active point is kept as (active_node, active_edge, active_length).
+        Since the whole string is known up front, leaves are created with their
+        final depth directly (the usual "open end" is always the end of x).
         """
-        # TODO.
-        raise NotImplementedError()
+        n = len(x)
+        root = self.root
+        active_node = root
+        active_edge = 0    # position in x of the first character of the active edge
+        active_length = 0
+        remainder = 0      # suffixes still to be inserted in the current phase
+        for i in range(n):
+            remainder += 1
+            last_internal = None
+            while remainder > 0:
+                if active_length == 0:
+                    active_edge = i
+                child = active_node._get_transition_link(x[active_edge])
+                if child is None:
+                    # Rule 2: no edge starts with x[i] here - add a leaf.
+                    self._create_leaf(x, i - active_node.depth, active_node, active_node.depth)
+                    if last_internal is not None:
+                        last_internal._add_suffix_link(active_node)
+                        last_internal = None
+                else:
+                    edge_length = child.depth - active_node.depth
+                    if active_length >= edge_length:
+                        # Walk down: the active point lies beyond this edge.
+                        active_node = child
+                        active_edge += edge_length
+                        active_length -= edge_length
+                        continue
+                    if x[child.idx + active_node.depth + active_length] == x[i]:
+                        # Rule 3: x[i] is already on the edge - phase ends.
+                        if last_internal is not None and active_node is not root:
+                            last_internal._add_suffix_link(active_node)
+                        active_length += 1
+                        break
+                    # Rule 2: split the edge and add a leaf.
+                    split = self._create_node(x, child, active_node.depth + active_length)
+                    self._create_leaf(x, i - split.depth, split, split.depth)
+                    if last_internal is not None:
+                        last_internal._add_suffix_link(split)
+                    last_internal = split
+
+                remainder -= 1
+                if active_node is root and active_length > 0:
+                    active_length -= 1
+                    active_edge = i - remainder + 1
+                elif active_node is not root:
+                    slink = active_node._get_suffix_link()
+                    active_node = slink if slink is not None else root
 
     def _build_generalized(self, xs: list[str]) -> None:
         """Builds a Generalized Suffix Tree (GST) from the array of strings provided.
