@@ -78,3 +78,63 @@ def test_ukkonen_bytes():
 def test_invalid_builder():
     with pytest.raises(ValueError):
         STree.STree("abc", builder="nosuchalgorithm")
+
+
+def test_append_online_basic():
+    st = STree.STree(builder="ukkonen")
+    st.append("abcab")
+    assert st.find("bca") == 1
+    assert st.find("abd") == -1
+    st.append("xabcd")
+    assert st.find("bxa") == 4
+    assert st.find("abcd") == 6
+    assert st.find_all("abc") == {0, 6}
+
+
+def test_append_queries_between_appends():
+    random.seed(3)
+    text = ''.join(random.choice("abc") for _ in range(300))
+    st = STree.STree(builder="ukkonen")
+    for i, c in enumerate(text):
+        st.append(c)
+        prefix = text[:i + 1]
+        for _ in range(5):
+            a = random.randint(0, i)
+            b = random.randint(a + 1, i + 1)
+            y = prefix[a:b]
+            assert st.find(y) == prefix.find(y)
+        assert st.find(prefix[-min(5, len(prefix)):] + "z") == -1
+
+
+def test_append_char_by_char_matches_batch_mccreight():
+    random.seed(5)
+    for n in [10, 100, 500]:
+        text = ''.join(random.choice("abcd") for _ in range(n))
+        st = STree.STree(builder="ukkonen")
+        for c in text:
+            st.append(c)
+        # Explicitly append the same terminal symbol build() would use, which
+        # turns the implicit suffix tree into the true suffix tree of text.
+        st.append(chr(0xE000))
+        mc = STree.STree(text)
+        assert canonical(st.root, st.word, 0) == canonical(mc.root, mc.word, 0)
+
+
+def test_append_bytes():
+    st = STree.STree(builder="ukkonen")
+    st.append(b"abc")
+    st.append(b"def")
+    assert st.find(b"cd") == 2
+    assert st.find(b"fg") == -1
+
+
+def test_append_requires_ukkonen_builder():
+    st = STree.STree("abc")
+    with pytest.raises(ValueError):
+        st.append("d")
+
+
+def test_append_after_build_raises():
+    st = STree.STree("abc", builder="ukkonen")
+    with pytest.raises(ValueError):
+        st.append("d")
