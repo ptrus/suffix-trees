@@ -6,11 +6,9 @@ on:
   push:
     branches:
       - master
-  # Or when a pull request event occurs for a pull request against one of the
-  # matched branches.
+  # Or when a pull request event occurs, regardless of its base branch (a
+  # base-branch filter here would silently skip CI for stacked PRs).
   pull_request:
-    branches:
-      - master
 
 jobs:
 
