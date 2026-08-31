@@ -13,13 +13,18 @@ _OPEN_LEAF_DEPTH = sys.maxsize
 class STree:
     """Class representing the suffix tree."""
 
-    BUILDERS = ('mccreight', 'ukkonen')
-
     def __init__(self, data: str | bytes | list[str] | list[bytes] | None = None,
-                 builder: str = 'mccreight'):
-        if builder not in self.BUILDERS:
-            raise ValueError(f"Unknown builder {builder!r}, expected one of {self.BUILDERS}")
-        self.builder = builder
+                 online: bool = False):
+        """Creates a suffix tree.
+
+        :param data: String, bytes or a list of those to build the tree from.
+        :param online: If True, the tree is built online (Ukkonen's algorithm):
+                       text is fed incrementally with append() - data, if given,
+                       is the first appended chunk - and the tree can be queried
+                       between appends. If False (default), the tree is built in
+                       one go from data (McCreight's algorithm).
+        """
+        self.online = online
         self.root = _SNode()
         self.root.depth = 0
         self.root.idx = 0
@@ -28,7 +33,6 @@ class STree:
         self.word = ""
         self.word_starts: list[int] = []
         self._bytes_input = False
-        self._finalized = False
         # Online (Ukkonen) construction state.
         self._processed = 0
         self._active_node = self.root
@@ -37,7 +41,10 @@ class STree:
         self._remainder = 0
 
         if data:
-            self.build(data)
+            if online:
+                self.append(data)
+            else:
+                self.build(data)
 
     def _check_input(self, data: str | bytes | list[str] | list[bytes]) -> str:
         """Checks the validity of the input.
@@ -79,6 +86,8 @@ class STree:
 
         :param x: String or List of Strings (str or bytes)
         """
+        if self.online:
+            raise ValueError("This tree is online; use append() instead of build()")
         if self.word:
             raise ValueError("Tree has already been built; create a new STree instead")
         tree_type = self._check_input(x)
@@ -90,10 +99,9 @@ class STree:
         if tree_type == 'gst':
             x = [self._decode(item) for item in x]
             self._build_generalized(x)
-        self._finalized = True
 
     def append(self, data: str | bytes) -> None:
-        """Appends data to the suffix tree online (Ukkonen builder only).
+        """Appends data to an online suffix tree (STree(online=True)).
 
         The tree can be queried between appends: it is the implicit suffix
         tree of the text appended so far. find() is exact on it; find_all()
@@ -102,11 +110,8 @@ class STree:
 
         :param data: String (str or bytes) to append.
         """
-        if self.builder != 'ukkonen':
-            raise ValueError("append() requires builder='ukkonen'")
-        if self._finalized:
-            raise ValueError("Cannot append to a tree constructed with build(); "
-                             "create STree(builder='ukkonen') and use append() only")
+        if not self.online:
+            raise ValueError("append() requires STree(online=True)")
         if not isinstance(data, (str, bytes)):
             raise ValueError("Argument should be str or bytes")
         self.word += self._decode(data)
@@ -115,10 +120,7 @@ class STree:
     def _build(self, x: str) -> None:
         """Builds a Suffix tree."""
         self.word = x
-        if self.builder == 'ukkonen':
-            self._build_Ukkonen(x)
-        else:
-            self._build_McCreight(x)
+        self._build_McCreight(x)
 
     def _build_McCreight(self, x: str) -> None:
         """Builds a Suffix tree using McCreight O(n) algorithm.
@@ -173,20 +175,12 @@ class STree:
             v = self._create_node(x, v, d - 1)
         u._add_suffix_link(v)
 
-    def _build_Ukkonen(self, x: str) -> None:
-        """Builds a Suffix tree using Ukkonen's online O(n) algorithm.
+    def _ukkonen_advance(self) -> None:
+        """Advances Ukkonen's online O(n) construction over the not yet
+        processed suffix of self.word.
 
         Algorithm based on:
         Ukkonen, Esko. "On-line construction of suffix trees." - Algorithmica, 1995.
-
-        Simply advances the online construction over the whole (already stored)
-        word; append() uses the same machinery incrementally.
-        """
-        self._ukkonen_advance()
-
-    def _ukkonen_advance(self) -> None:
-        """Advances Ukkonen's online construction over the not yet processed
-        suffix of self.word.
 
         The active point is kept as (active_node, active_edge, active_length)
         and persists on the tree between calls, so the text can arrive in any

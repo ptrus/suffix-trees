@@ -38,14 +38,9 @@ print(st.lcsm())  # ["abc", "kle"]
 st = STree.STree(b"abcdefghab")
 print(st.find(b"abc"))  # 0
 
-# The construction algorithm can be chosen explicitly:
-# McCreight (default) or Ukkonen. Both are O(n) and build identical trees.
-st = STree.STree("abcdefghab", builder="ukkonen")
-print(st.find("abc"))  # 0
-
-# Ukkonen's algorithm is online: text can be appended incrementally and the
-# tree queried between appends.
-st = STree.STree(builder="ukkonen")
+# Online mode (Ukkonen's algorithm): text can be appended incrementally and
+# the tree queried between appends.
+st = STree.STree(online=True)
 st.append("abcab")
 print(st.find("bca"))  # 1
 st.append("xabcd")
